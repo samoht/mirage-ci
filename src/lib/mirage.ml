@@ -8,11 +8,9 @@ let build ~ocluster ~(platform : Platform.t) ~base ~project ~unikernel ~target (
     |> Spec.add (Setup.install_tools [ "dune"; "mirage"; "opam-monorepo" ])
     |> Spec.add
          [
-           copy [ "./" ^ unikernel ^ "/config.ml" ] ~dst:("/src/" ^ unikernel ^ "/");
-           workdir ("/src/" ^ unikernel);
            run "sudo chown -R opam:opam .";
            env "DUNE_CACHE" "enabled";
-           run ~cache:[ Setup.dune_build_cache ] "opam exec -- mirage configure -t %s" target;
+           run ~cache:[ Setup.dune_build_cache ] "opam exec -- make configure MODE=%s" target;
            run
              ~cache:[ Setup.opam_download_cache; Setup.dune_build_cache ]
              ~network:Setup.network "opam exec -- make depends";

@@ -11,38 +11,7 @@ let is_available_on (platform : Platform.t) = function
 (* muen: no support for block *)
 let overrides = [ ("block", targets |> List.filter (( <> ) "muen")) ]
 
-type configuration_4 = {
-  repos : Repository.fetched list Current.t;
-  skeleton : Current_git.Commit.t Current.t;
-}
-
 type test = { platform : Platform.t; unikernel : string; target : string }
-
-let run_test_mirage_4 ~ocluster { unikernel; platform; target } configuration =
-  let c = configuration in
-  let repos =
-    let+ repos = c.repos in
-    List.map Repository.unfetch repos
-  in
-  let base =
-    let+ repos = repos in
-    Platform.spec platform.system |> Spec.add (Setup.add_repositories repos)
-  in
-  let base =
-    let+ base = base in
-    (* pre-install ocaml-freestanding *)
-    Spec.add (Setup.install_tools [ "ocaml-freestanding" ]) base
-  in
-  let skeleton =
-    (* add a fake dep to the lockfile (only rebuild if lockfile changed.)*)
-    let+ skeleton = c.skeleton in
-    Current_git.Commit.id skeleton
-  in
-  Mirage.build ~ocluster ~platform ~base ~project:skeleton ~unikernel ~target ()
-  |> Current.collapse
-       ~key:("Unikernel " ^ unikernel ^ "@" ^ target)
-       ~value:("4-" ^ Platform.platform_id platform)
-       ~input:c.repos
 
 type configuration_main = {
   mirage : Current_git.Commit_id.t Current.t;
@@ -101,16 +70,7 @@ let multi_stage_test ~platform ~targets ~configure ~run_test mirage_skeleton =
   |> List.map (fun target -> (target, aux ~target mirage_skeleton stages))
   |> Current.all_labelled
 
-(* MIRAGE 4 TEST *)
-
-let v_4 ~ocluster ~repos ~(platform : Platform.t) ~targets mirage_skeleton =
-  multi_stage_test ~platform ~targets ~run_test:(run_test_mirage_4 ~ocluster)
-    ~configure:(fun skeleton -> { repos; skeleton })
-    mirage_skeleton
-
-(* MIRAGE MAIN TEST *)
-
-let v_main ~ocluster ~platform ~mirage ~repos mirage_skeleton =
+let v ~ocluster ~platform ~mirage ~repos mirage_skeleton =
   let mirage_skeleton = Current_git.fetch mirage_skeleton in
   multi_stage_test ~platform ~targets ~run_test:(run_test_mirage_main ~ocluster)
     ~configure:(fun skeleton ->
